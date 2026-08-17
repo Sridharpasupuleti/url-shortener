@@ -1,0 +1,174 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f6f8;
+}
+
+.App {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.url-container {
+  width: 100%;
+  max-width: 600px;
+  background: white;
+  padding: 40px;
+  border-radius: 14px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+.url-container h1 {
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 36px;
+}
+
+.url-form h2 {
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 22px;
+}
+
+/* Input groups */
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.input-group input {
+  padding: 13px;
+  border: 1px solid #ccc;
+  border-radius: 7px;
+  font-size: 16px;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.input-group small {
+  margin-top: 6px;
+  color: #777;
+}
+
+/* Error */
+
+.error-message {
+  margin-bottom: 20px;
+  padding: 12px 15px;
+  border-radius: 7px;
+  background: #fdecea;
+  color: #d93025;
+  border: 1px solid #f5c2c0;
+  font-size: 14px;
+}
+
+/* Shorten button */
+
+.shorten-button {
+  width: 100%;
+  padding: 13px;
+  border: none;
+  border-radius: 7px;
+  background: #007bff;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.shorten-button:hover {
+  background: #0069d9;
+}
+
+.shorten-button:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
+
+/* Result */
+
+.result {
+  margin-top: 30px;
+  padding: 20px;
+  border-radius: 8px;
+  background: #f1f8f4;
+  border: 1px solid #c8e6d2;
+}
+
+.result h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.result-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.result-row a {
+  flex: 1;
+  word-break: break-all;
+  color: #007bff;
+  text-decoration: none;
+}
+
+.result-row a:hover {
+  text-decoration: underline;
+}
+
+/* Copy button */
+
+.copy-button {
+  padding: 9px 15px;
+  border: none;
+  border-radius: 6px;
+  background: #28a745;
+  color: white;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.copy-button:hover {
+  background: #218838;
+}
+
+/* Mobile */
+
+@media (max-width: 600px) {
+
+  .url-container {
+    padding: 25px;
+  }
+
+  .url-container h1 {
+    font-size: 28px;
+  }
+
+  .result-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .copy-button {
+    width: 100%;
+  }
+}
