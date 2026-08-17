@@ -1,0 +1,10 @@
+url-shortener-backend/target/
+url-shortener-frontend/node_modules/
+url-shortener-frontend/dist/
+
+.env
+*.env
+
+.idea/
+*.iml
+.vscode/
