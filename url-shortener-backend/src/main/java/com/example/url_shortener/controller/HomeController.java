@@ -85,8 +85,10 @@ public class HomeController {
 	public void redirect(
 	        @PathVariable String shortCode,
 	        HttpServletResponse response) throws IOException {
-
+		
 	    Urls surl = urlService.findByShortCode(shortCode);
+	    surl.setClickCount(surl.getClickCount()+1);
+	    urlRepository.save(surl);
 	    response.sendRedirect(surl.getOriginalUrl());
 	    
 	    

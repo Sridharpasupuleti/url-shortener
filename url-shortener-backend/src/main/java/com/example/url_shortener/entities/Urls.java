@@ -16,6 +16,10 @@ public class Urls {
 //	@Column(nullable = false, unique = true, length = 20)
 	@Column(nullable = true, unique = true, length = 20)
 	private String shortCode;
+
+	@Column
+	private long clickCount = 0;
+	
 	public Long getId() {
 		return id;
 	}
@@ -33,5 +37,11 @@ public class Urls {
 	}
 	public void setShortCode(String shortCode) {
 		this.shortCode = shortCode;
+	}
+	public long getClickCount() {
+		return clickCount;
+	}
+	public void setClickCount(long clickCount) {
+		this.clickCount = clickCount;
 	}
 }

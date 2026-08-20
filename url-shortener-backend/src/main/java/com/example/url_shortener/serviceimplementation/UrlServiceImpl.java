@@ -41,11 +41,14 @@ public class UrlServiceImpl implements UrlService {
 		if(urldto.getColumnAlias() != null && !urldto.getColumnAlias().isBlank()) {
 			url.setShortCode(urldto.getColumnAlias());
 			url.setOriginalUrl(urldto.getUrl());
+			url.setClickCount(0);
 			Urls savedurl = urlRepository.save(url);
 			return savedurl;
 		}
 
 		url.setShortCode(null);
+		url.setClickCount(0);
+		
 		Urls savedurl = urlRepository.save(url);
 		savedurl.setShortCode(Base62.encode(savedurl.getId()));
 		savedurl = urlRepository.save(savedurl);
