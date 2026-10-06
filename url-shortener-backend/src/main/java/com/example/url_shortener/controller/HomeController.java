@@ -19,7 +19,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 import com.example.url_shortener.dtos.Urldto;
-import com.example.url_shortener.entities.Urls;
+import com.example.url_shortener.dtos.UrlResponseDTO;
 import com.example.url_shortener.exception.ColumnAliasAlreadyExistsException;
 import com.example.url_shortener.exception.ErrorResponse;
 import com.example.url_shortener.exception.UrlAlreadyExistsException;
@@ -50,7 +50,7 @@ public class HomeController {
 	
 	@PostMapping("/posturl")
 	public ResponseEntity<?> generateShortCode(@RequestBody Urldto url) {
-		Urls savedurl;
+		UrlResponseDTO savedurl;
 				try {
 					if(!isValid(url.getUrl())) {
 						ErrorResponse error = new ErrorResponse(LocalDateTime.now(), "Url should start with 'http:' or 'https:'", "Url InValid");
@@ -85,15 +85,13 @@ public class HomeController {
 	public void redirect(
 	        @PathVariable String shortCode,
 	        HttpServletResponse response) throws IOException {
-		
-	    Urls surl = urlService.findByShortCode(shortCode);
-	    surl.setClickCount(surl.getClickCount()+1);
-	    urlRepository.save(surl);
-	    response.sendRedirect(surl.getOriginalUrl());
-	    
-	    
+
+	    String originalUrl = urlService.getOriginalUrl(shortCode);
+
+	    urlService.incrementClickCount(shortCode);
+
+	    response.sendRedirect(originalUrl);
 	}
-	
 	
 	
 	private boolean isValid(String url) throws URISyntaxException {

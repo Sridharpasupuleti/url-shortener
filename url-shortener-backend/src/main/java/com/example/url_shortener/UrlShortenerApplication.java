@@ -1,8 +1,10 @@
 package com.example.url_shortener;
 
 import org.modelmapper.ModelMapper;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestClient;
 
@@ -10,6 +12,7 @@ import com.example.url_shortener.dtos.Urldto;
 import com.example.url_shortener.entities.Urls;
 
 @SpringBootApplication
+@EnableCaching
 public class UrlShortenerApplication {
 
 	public static void main(String[] args) {
