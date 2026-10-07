@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import com.example.url_shortener.dtos.Urldto;
@@ -44,7 +45,16 @@ public class UrlServiceImpl implements UrlService {
 			url.setShortCode(urldto.getColumnAlias());
 			url.setOriginalUrl(urldto.getUrl());
 			url.setClickCount(0);
-			Urls savedurl = urlRepository.save(url);
+			Urls savedurl;
+			try {
+				savedurl = urlRepository.saveAndFlush(url);
+			} catch (DataIntegrityViolationException exception) {
+				if (urlRepository.findByShortCode(urldto.getColumnAlias()).isPresent()) {
+					throw new ColumnAliasAlreadyExistsException(
+							String.format("Column Alias %s already exists", urldto.getColumnAlias()));
+				}
+				throw exception;
+			}
 			return modelMapper.map(savedurl, UrlResponseDTO.class);
 		}
 

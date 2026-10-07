@@ -21,6 +21,7 @@ For every new feature, follow these 8 steps:
 - [x] Implementing Base62 encoding logic.
 - [x] Integrating Redis for caching.
 - [x] Handling Custom Exceptions and Global Error Responses.
-- [ ] Implementing a comprehensive Test Suite.
+- [x] Implementing controller and persistence integration tests with an isolated H2 database.
+- [x] Implementing Redis-backed per-IP rate limiting for URL creation.
 - [ ] Adding advanced analytics/metrics.
 - [ ] Improving the shortening algorithm (reduce DB writes).

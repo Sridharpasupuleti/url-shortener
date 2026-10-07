@@ -6,6 +6,7 @@ import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,7 +26,9 @@ import com.example.url_shortener.exception.ErrorResponse;
 import com.example.url_shortener.exception.UrlAlreadyExistsException;
 import com.example.url_shortener.repository.UrlRepository;
 import com.example.url_shortener.service.UrlService;
+import com.example.url_shortener.service.UrlShorteningRateLimiter;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
@@ -40,6 +43,12 @@ public class HomeController {
 	
 	@Autowired
 	private RestClient restClient;
+
+	@Autowired
+	private UrlShorteningRateLimiter rateLimiter;
+
+	@Value("${app.public-base-url:http://localhost:8080}")
+	private String publicBaseUrl;
 //	@GetMapping("{shortcode}")
 //	public Response
 	
@@ -49,8 +58,15 @@ public class HomeController {
 	}
 	
 	@PostMapping("/posturl")
-	public ResponseEntity<?> generateShortCode(@RequestBody Urldto url) {
+	public ResponseEntity<?> generateShortCode(@RequestBody Urldto url, HttpServletRequest request) {
 		UrlResponseDTO savedurl;
+				if (!rateLimiter.isAllowed(request.getRemoteAddr())) {
+					ErrorResponse error = new ErrorResponse(
+							LocalDateTime.now(),
+							"Rate limit exceeded: maximum 10 URL-shortening requests per minute per IP.",
+							"Too Many Requests");
+					return new ResponseEntity<>(error, HttpStatus.TOO_MANY_REQUESTS);
+				}
 				try {
 					if(!isValid(url.getUrl())) {
 						ErrorResponse error = new ErrorResponse(LocalDateTime.now(), "Url should start with 'http:' or 'https:'", "Url InValid");
@@ -68,7 +84,8 @@ public class HomeController {
 				}
 				try {
 					savedurl = urlService.generateShortCode(url);
-					String shortenedUrl = "http://localhost:8080/urlshortener/" + savedurl.getShortCode();
+					String shortenedUrl = publicBaseUrl.replaceAll("/+$", "")
+							+ "/urlshortener/" + savedurl.getShortCode();
 					return new ResponseEntity<>(shortenedUrl, HttpStatus.OK);
 				}
 				catch(ColumnAliasAlreadyExistsException e) {

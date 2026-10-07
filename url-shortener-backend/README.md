@@ -8,6 +8,7 @@ A Spring Boot application that provides URL shortening services, allowing users 
 - **Redirection**: Automatic redirection from short codes to original URLs.
 - **Analytics**: Basic click tracking for shortened URLs.
 - **Caching**: Redis-based caching for fast redirection.
+- **Rate Limiting**: Redis-backed limit of 10 URL-shortening requests per minute per client IP.
 - **URL Validation**: Ensures provided URLs are valid and reachable.
 
 ## Technology Stack
@@ -41,10 +42,29 @@ export DB_PASSWORD='<your-database-password>'
 ```
 
 The application uses `DB_USERNAME` (defaulting to `root`) and requires `DB_PASSWORD`.
+Redis must be available for caching and URL-shortening rate limits.
+The public base URL defaults to `http://localhost:8080`; set `APP_PUBLIC_BASE_URL` to the externally reachable base URL when deploying behind a load balancer.
+
+In PowerShell:
+```powershell
+$env:APP_PUBLIC_BASE_URL = "https://short.example.com"
+```
+
+In Bash:
+```bash
+export APP_PUBLIC_BASE_URL=https://short.example.com
+```
 
 ### Running the Application
 ```bash
 ./mvnw spring-boot:run
+```
+
+### Running Tests
+The test suite uses an in-memory H2 database and a local HTTP test server; it does not require MySQL or Redis.
+
+```bash
+./mvnw clean test
 ```
 
 ## Project Structure

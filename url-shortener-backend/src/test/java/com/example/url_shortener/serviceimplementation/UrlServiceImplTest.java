@@ -13,7 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import com.example.url_shortener.dtos.Urldto;
 import com.example.url_shortener.dtos.UrlResponseDTO;
@@ -82,7 +82,7 @@ class UrlServiceImplTest {
         // Arrange
         when(urlRepository.findByShortCode("google")).thenReturn(Optional.empty());
         when(urlRepository.findByOriginalUrl("https://google.com")).thenReturn(Optional.empty());
-        when(urlRepository.save(any(Urls.class))).thenReturn(sampleEntity);
+        when(urlRepository.saveAndFlush(any(Urls.class))).thenReturn(sampleEntity);
         when(modelMapper.map(any(Urldto.class), eq(Urls.class))).thenReturn(sampleEntity);
         when(modelMapper.map(any(Urls.class), eq(UrlResponseDTO.class))).thenReturn(new UrlResponseDTO());
 
@@ -90,6 +90,40 @@ class UrlServiceImplTest {
         urlService.generateShortCode(sampleDto);
 
         // Assert: Verify the record was saved exactly once
-        verify(urlRepository, times(1)).save(any(Urls.class));
+        verify(urlRepository, times(1)).saveAndFlush(any(Urls.class));
+    }
+
+    @Test
+    @DisplayName("Should report an alias conflict when another request claims the alias first")
+    void testGenerateShortCode_ConcurrentAliasConflict() {
+        when(urlRepository.findByShortCode("google"))
+                .thenReturn(Optional.empty(), Optional.of(sampleEntity));
+        when(urlRepository.findByOriginalUrl("https://google.com")).thenReturn(Optional.empty());
+        when(modelMapper.map(any(Urldto.class), eq(Urls.class))).thenReturn(sampleEntity);
+        when(urlRepository.saveAndFlush(any(Urls.class)))
+                .thenThrow(new DataIntegrityViolationException("unique short code constraint"));
+
+        ColumnAliasAlreadyExistsException exception = assertThrows(
+                ColumnAliasAlreadyExistsException.class,
+                () -> urlService.generateShortCode(sampleDto));
+
+        assertEquals("Column Alias google already exists", exception.getMessage());
+        verify(urlRepository).saveAndFlush(any(Urls.class));
+        verify(urlRepository, times(2)).findByShortCode("google");
+    }
+
+    @Test
+    @DisplayName("Should propagate unrelated database integrity failures")
+    void testGenerateShortCode_PropagatesUnrelatedDatabaseFailure() {
+        when(urlRepository.findByShortCode("google")).thenReturn(Optional.empty());
+        when(urlRepository.findByOriginalUrl("https://google.com")).thenReturn(Optional.empty());
+        when(modelMapper.map(any(Urldto.class), eq(Urls.class))).thenReturn(sampleEntity);
+        when(urlRepository.saveAndFlush(any(Urls.class)))
+                .thenThrow(new DataIntegrityViolationException("unrelated database constraint"));
+
+        assertThrows(DataIntegrityViolationException.class,
+                () -> urlService.generateShortCode(sampleDto));
+
+        verify(urlRepository, times(2)).findByShortCode("google");
     }
 }

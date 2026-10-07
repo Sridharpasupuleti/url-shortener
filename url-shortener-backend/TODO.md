@@ -19,17 +19,19 @@
 - [x] Exception Handling:
     - Custom exceptions for `URLNotFound`, `UrlAlreadyExists`, and `ColumnAliasAlreadyExists`.
     - `ErrorResponse` DTO for consistent API error messages.
+- [x] Automated tests for controller behavior, redirects, URL validation, duplicate aliases, JPA persistence, and database constraints.
+- [x] Enforce short-code uniqueness in the database and handle concurrent alias conflicts.
+- [x] Apply Redis-backed per-IP rate limiting to URL-shortening POST requests.
 
 ## Current Implementation State
 The application is a functional MVP. Users can shorten URLs (with or without aliases) and be redirected back to the original site. Caching is active via Redis.
 
 ## Remaining Work
-- [ ] **Comprehensive Testing**: Currently, only the default `contextLoads` test exists. Need unit tests for `UrlServiceImpl` and integration tests for `HomeController`.
+- [ ] **Comprehensive Testing**: Add broader end-to-end coverage for URL creation and redirection with the application, persistence layer, and cache working together.
 - [ ] **API Improvements**:
     - Add an endpoint to retrieve analytics for a specific short code.
     - Implement pagination for a list of all shortened URLs (for admin/user view).
 - [ ] **Security**:
-    - Add rate limiting to prevent abuse of the shortening endpoint.
     - Implement basic authentication for management endpoints.
 - [ ] **Optimization**:
     - Optimize the `generateShortCode` process to avoid the double-save (save $\rightarrow$ encode $\rightarrow$ save).

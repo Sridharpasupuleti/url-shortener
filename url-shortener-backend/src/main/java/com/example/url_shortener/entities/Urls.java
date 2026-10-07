@@ -5,16 +5,18 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 @Entity
+@Table(uniqueConstraints = @UniqueConstraint(name = "uk_urls_short_code", columnNames = "short_code"))
 public class Urls {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 	@Column(nullable = false, length = 2048)
 	private String originalUrl;
-//	@Column(nullable = false, unique = true, length = 20)
-	@Column(nullable = true, unique = true, length = 20)
+	@Column(name = "short_code", nullable = true, length = 20)
 	private String shortCode;
 
 	@Column
