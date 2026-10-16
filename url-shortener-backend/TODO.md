@@ -22,9 +22,12 @@
 - [x] Automated tests for controller behavior, redirects, URL validation, duplicate aliases, JPA persistence, and database constraints.
 - [x] Enforce short-code uniqueness in the database and handle concurrent alias conflicts.
 - [x] Apply Redis-backed per-IP rate limiting to URL-shortening POST requests.
+- [x] Add configurable independent Redis rate limits for URL creation and redirects, with trusted-proxy-aware client IP resolution and fail-closed Redis errors.
+- [x] Make click counts atomic in the database and test concurrent increments.
+- [x] Add a Docker Compose deployment with Nginx load balancing across scalable Spring Boot instances.
 
 ## Current Implementation State
-The application is a functional MVP. Users can shorten URLs (with or without aliases) and be redirected back to the original site. Caching is active via Redis.
+The application is a functional MVP. Users can shorten URLs (with or without aliases) and be redirected back to the original site. Caching is active via Redis, and the optional Docker Compose stack puts Nginx in front of multiple app instances.
 
 ## Remaining Work
 - [ ] **Comprehensive Testing**: Add broader end-to-end coverage for URL creation and redirection with the application, persistence layer, and cache working together.
@@ -38,4 +41,4 @@ The application is a functional MVP. Users can shorten URLs (with or without ali
 - [ ] **Frontend**: Create a simple UI to interact with the API.
 
 ## Next Recommended Step
-**Implement Unit and Integration Tests**: The codebase has almost no tests. Before adding new features or optimizing the shortening process, we must establish a safety net of tests to prevent regressions.
+**Comprehensive Testing**: Add broader end-to-end coverage for URL creation and redirection with the application, persistence layer, and cache working together.

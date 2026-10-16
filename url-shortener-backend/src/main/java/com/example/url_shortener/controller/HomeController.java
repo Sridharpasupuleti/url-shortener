@@ -1,6 +1,5 @@
 package com.example.url_shortener.controller;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
@@ -24,12 +23,11 @@ import com.example.url_shortener.dtos.UrlResponseDTO;
 import com.example.url_shortener.exception.ColumnAliasAlreadyExistsException;
 import com.example.url_shortener.exception.ErrorResponse;
 import com.example.url_shortener.exception.UrlAlreadyExistsException;
-import com.example.url_shortener.repository.UrlRepository;
+import com.example.url_shortener.service.ClientIpResolver;
 import com.example.url_shortener.service.UrlService;
 import com.example.url_shortener.service.UrlShorteningRateLimiter;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
 @RequestMapping("/urlshortener")
@@ -39,13 +37,13 @@ public class HomeController {
 	UrlService urlService;
 	
 	@Autowired
-	private UrlRepository urlRepository;
-	
-	@Autowired
 	private RestClient restClient;
 
 	@Autowired
 	private UrlShorteningRateLimiter rateLimiter;
+
+	@Autowired
+	private ClientIpResolver clientIpResolver;
 
 	@Value("${app.public-base-url:http://localhost:8080}")
 	private String publicBaseUrl;
@@ -60,10 +58,10 @@ public class HomeController {
 	@PostMapping("/posturl")
 	public ResponseEntity<?> generateShortCode(@RequestBody Urldto url, HttpServletRequest request) {
 		UrlResponseDTO savedurl;
-				if (!rateLimiter.isAllowed(request.getRemoteAddr())) {
+				if (!rateLimiter.isUrlCreationAllowed(clientIpResolver.resolve(request))) {
 					ErrorResponse error = new ErrorResponse(
 							LocalDateTime.now(),
-							"Rate limit exceeded: maximum 10 URL-shortening requests per minute per IP.",
+							"Rate limit exceeded. Try again later.",
 							"Too Many Requests");
 					return new ResponseEntity<>(error, HttpStatus.TOO_MANY_REQUESTS);
 				}
@@ -99,15 +97,24 @@ public class HomeController {
 	}
 	
 	@GetMapping("/{shortCode}")
-	public void redirect(
+	public ResponseEntity<?> redirect(
 	        @PathVariable String shortCode,
-	        HttpServletResponse response) throws IOException {
+	        HttpServletRequest request) {
 
+	    if (!rateLimiter.isRedirectAllowed(clientIpResolver.resolve(request))) {
+	        ErrorResponse error = new ErrorResponse(
+	                LocalDateTime.now(),
+	                "Rate limit exceeded. Try again later.",
+	                "Too Many Requests");
+	        return new ResponseEntity<>(error, HttpStatus.TOO_MANY_REQUESTS);
+	    }
 	    String originalUrl = urlService.getOriginalUrl(shortCode);
 
 	    urlService.incrementClickCount(shortCode);
 
-	    response.sendRedirect(originalUrl);
+	    return ResponseEntity.status(HttpStatus.FOUND)
+	            .location(URI.create(originalUrl))
+	            .build();
 	}
 	
 	
@@ -121,7 +128,7 @@ public class HomeController {
 
 	    try {
 
-	        ResponseEntity<Void> response = restClient
+	        restClient
 	                .head()
 	                .uri(url)
 	                .retrieve()

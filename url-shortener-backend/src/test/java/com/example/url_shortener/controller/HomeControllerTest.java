@@ -17,10 +17,13 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.example.url_shortener.config.RateLimitProperties;
 import com.example.url_shortener.dtos.Urldto;
 import com.example.url_shortener.dtos.UrlResponseDTO;
+import com.example.url_shortener.exception.ApiExceptionHandler;
 import com.example.url_shortener.exception.ColumnAliasAlreadyExistsException;
-import com.example.url_shortener.repository.UrlRepository;
+import com.example.url_shortener.exception.RateLimitUnavailableException;
+import com.example.url_shortener.service.ClientIpResolver;
 import com.example.url_shortener.service.UrlService;
 import com.example.url_shortener.service.UrlShorteningRateLimiter;
 import com.sun.net.httpserver.HttpServer;
@@ -44,7 +47,8 @@ class HomeControllerTest {
     void setUp() throws IOException {
         urlService = org.mockito.Mockito.mock(UrlService.class);
         rateLimiter = org.mockito.Mockito.mock(UrlShorteningRateLimiter.class);
-        when(rateLimiter.isAllowed(any())).thenReturn(true);
+        when(rateLimiter.isUrlCreationAllowed(any())).thenReturn(true);
+        when(rateLimiter.isRedirectAllowed(any())).thenReturn(true);
         targetServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         targetServer.createContext("/", exchange -> {
             exchange.sendResponseHeaders(200, -1);
@@ -57,11 +61,13 @@ class HomeControllerTest {
         HomeController controller = new HomeController();
         ReflectionTestUtils.setField(controller, "urlService", urlService);
         ReflectionTestUtils.setField(controller, "rateLimiter", rateLimiter);
+        ReflectionTestUtils.setField(controller, "clientIpResolver",
+                new ClientIpResolver(new RateLimitProperties()));
         ReflectionTestUtils.setField(controller, "publicBaseUrl", "https://short.example.com/");
-        ReflectionTestUtils.setField(controller, "urlRepository",
-                org.mockito.Mockito.mock(UrlRepository.class));
         ReflectionTestUtils.setField(controller, "restClient", RestClient.create());
-        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new ApiExceptionHandler())
+                .build();
     }
 
     @AfterEach
@@ -90,6 +96,7 @@ class HomeControllerTest {
                 .andExpect(header().string("Location", "https://example.org/article"));
 
         verify(urlService).incrementClickCount("abc");
+        verify(rateLimiter).isRedirectAllowed("127.0.0.1");
     }
 
     @Test
@@ -149,7 +156,7 @@ class HomeControllerTest {
 
     @Test
     void rateLimitedRequestReturnsTooManyRequestsJson() throws Exception {
-        when(rateLimiter.isAllowed(any())).thenReturn(false);
+        when(rateLimiter.isUrlCreationAllowed(any())).thenReturn(false);
 
         mockMvc.perform(post("/urlshortener/posturl")
                         .contentType("application/json")
@@ -158,21 +165,58 @@ class HomeControllerTest {
                                 """))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.message")
-                        .value("Rate limit exceeded: maximum 10 URL-shortening requests per minute per IP."))
+                        .value("Rate limit exceeded. Try again later."))
                 .andExpect(jsonPath("$.details").value("Too Many Requests"));
 
         verify(urlService, never()).generateShortCode(any(Urldto.class));
     }
 
     @Test
-    void nonPostEndpointsDoNotUseRateLimiter() throws Exception {
+    void rateLimitedRedirectDoesNotLookUpIncrementOrRedirect() throws Exception {
+        when(rateLimiter.isRedirectAllowed(any())).thenReturn(false);
+
+        mockMvc.perform(get("/urlshortener/abc"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.details").value("Too Many Requests"))
+                .andExpect(header().doesNotExist("Location"));
+
+        verify(urlService, never()).getOriginalUrl(any());
+        verify(urlService, never()).incrementClickCount(any());
+    }
+
+    @Test
+    void redisFailureFailsClosedWithServiceUnavailable() throws Exception {
+        when(rateLimiter.isRedirectAllowed(any()))
+                .thenThrow(new RateLimitUnavailableException("Rate limiter unavailable", null));
+
+        mockMvc.perform(get("/urlshortener/abc"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.message").value("Rate limiter unavailable"))
+                .andExpect(jsonPath("$.details").value("Service Unavailable"))
+                .andExpect(header().doesNotExist("Location"));
+
+        verify(urlService, never()).getOriginalUrl(any());
+        verify(urlService, never()).incrementClickCount(any());
+    }
+
+    @Test
+    void unknownShortCodeReturnsNotFoundErrorResponse() throws Exception {
+        when(urlService.getOriginalUrl("missing"))
+                .thenThrow(new com.example.url_shortener.exception.URLNotFoundException("URL Not Found"));
+
+        mockMvc.perform(get("/urlshortener/missing"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("URL Not Found"))
+                .andExpect(jsonPath("$.details").value("Not Found"));
+    }
+
+    @Test
+    void unrelatedGetEndpointsDoNotUseRateLimiter() throws Exception {
         when(urlService.getOriginalUrl("abc")).thenReturn("https://example.org/article");
 
         mockMvc.perform(get("/urlshortener/home"))
                 .andExpect(status().isOk());
-        mockMvc.perform(get("/urlshortener/abc"))
-                .andExpect(status().isFound());
 
-        verify(rateLimiter, never()).isAllowed(any());
+        verify(rateLimiter, never()).isRedirectAllowed(any());
     }
 }

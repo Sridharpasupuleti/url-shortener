@@ -20,6 +20,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
@@ -90,6 +92,51 @@ class UrlRepositoryIntegrationTest {
     @Test
     void emptyDatabaseHasNoMatchingShortCode() {
         assertTrue(urlRepository.findByShortCode("missing").isEmpty());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void concurrentAtomicIncrementsDoNotLoseUpdates() throws Exception {
+        Urls url = new Urls();
+        url.setOriginalUrl("https://example.org/concurrent");
+        url.setShortCode("concurrent");
+        urlRepository.saveAndFlush(url);
+
+        int workerCount = 8;
+        int incrementsPerWorker = 25;
+        CountDownLatch ready = new CountDownLatch(workerCount);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(workerCount);
+        try {
+            Future<?>[] workers = new Future<?>[workerCount];
+            for (int worker = 0; worker < workerCount; worker++) {
+                workers[worker] = executor.submit(() -> {
+                    ready.countDown();
+                    start.await();
+                    for (int increment = 0; increment < incrementsPerWorker; increment++) {
+                        assertEquals(1, urlRepository.incrementClickCountByShortCode("concurrent"));
+                    }
+                    return null;
+                });
+            }
+
+            ready.await();
+            start.countDown();
+            for (Future<?> worker : workers) {
+                worker.get();
+            }
+
+            assertEquals(workerCount * incrementsPerWorker,
+                    urlRepository.findByShortCode("concurrent").orElseThrow().getClickCount());
+        } finally {
+            start.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void atomicIncrementReturnsZeroForUnknownCode() {
+        assertEquals(0, urlRepository.incrementClickCountByShortCode("missing"));
     }
 
     private boolean insertWithAlias(String path, CountDownLatch ready, CountDownLatch start)

@@ -85,12 +85,8 @@ public class UrlServiceImpl implements UrlService {
 	}
 
 	public void incrementClickCount(String shortCode) {
-
-	    Urls url = urlRepository.findByShortCode(shortCode)
-	            .orElseThrow(() -> new URLNotFoundException("URL Not Found"));
-
-	    url.setClickCount(url.getClickCount() + 1);
-
-	    urlRepository.save(url);
+	    if (urlRepository.incrementClickCountByShortCode(shortCode) == 0) {
+	        throw new URLNotFoundException("URL Not Found");
+	    }
 	}
 }

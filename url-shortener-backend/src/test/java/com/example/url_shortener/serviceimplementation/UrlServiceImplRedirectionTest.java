@@ -66,22 +66,18 @@ class UrlServiceImplRedirectionTest {
     @Test
     @DisplayName("Should increment click count correctly")
     void testIncrementClickCount_Success() {
-        // Arrange
-        when(urlRepository.findByShortCode("google")).thenReturn(Optional.of(sampleEntity));
-
-        // Act
+        when(urlRepository.incrementClickCountByShortCode("google")).thenReturn(1);
         urlService.incrementClickCount("google");
 
-        // Assert
-        assertEquals(11L, sampleEntity.getClickCount(), "Click count should increase by 1");
-        verify(urlRepository, times(1)).save(sampleEntity);
+        verify(urlRepository).incrementClickCountByShortCode("google");
+        verify(urlRepository, never()).findByShortCode("google");
+        verify(urlRepository, never()).save(any(Urls.class));
     }
 
     @Test
     @DisplayName("Should throw exception when incrementing click count for non-existent code")
     void testIncrementClickCount_NotFound() {
-        // Arrange
-        when(urlRepository.findByShortCode("unknown")).thenReturn(Optional.empty());
+        when(urlRepository.incrementClickCountByShortCode("unknown")).thenReturn(0);
 
         // Act & Assert
         assertThrows(URLNotFoundException.class, () -> {
